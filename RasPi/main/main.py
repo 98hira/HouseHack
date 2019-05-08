@@ -3,29 +3,26 @@
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import json
-
+import os
 import queue # キュー操作用
 from threading import Thread #スレッド処理用
 
 import irrp_wrapper
 
-
 # Ctl + C で強制終了させる。
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+#ローカル環境変数の読み込み
+from dotenv import load_dotenv
+load_dotenv()
 
 # グローバル変数
-ENV_HOST        = "秘密だよ"
-ENV_ROOTCA      = "秘密だよ"
-ENV_CERT        = "秘密だよ"
-ENV_PRIVATE_KEY = "秘密だよ"
-host            = ENV_HOST
-rootCAPath      = ENV_ROOTCA
-certificatePath = ENV_CERT
-privateKeyPath  = ENV_PRIVATE_KEY
+host            = os.environ["ENV_HOST"]
+rootCAPath      = os.environ["ENV_ROOTCA"]
+certificatePath = os.environ["ENV_CERT"]
+privateKeyPath  = os.environ["ENV_PRIVATE_KEY"]
 port            = 8883
-
 
 message_q = queue.Queue()
 topic = {
