@@ -26,7 +26,7 @@ port            = 8883
 
 message_q = queue.Queue()
 topic = {
-    "aws_to_raspi":   "raspi/main/order",
+    "aws_to_raspi":   "raspi/main/request",
     "aws_from_raspi": "raspi/main/result",
 }
 
@@ -70,37 +70,27 @@ def main_thread():
 
     while True:
         #メッセージ受信待ち
-        _request_msg = message_q.get()
-        print("_request_msg:%s" % (_request_msg))
+        _request_msg = json.loads(message_q.get().decode())
+        print(_request_msg)
 
-        #メッセージ解析
-        # ToDo:ValueErrorの対策必要
-        _msg_id = int(_request_msg)
-        
-        _devise_id  = int(_msg_id / 100)
-        _request_id = int(_msg_id % 100)
-        print("_devise_id:%d _request_id:%d" % (_devise_id, _request_id))
-
-        #実行結果の初期値代入
-        _response_mesg = {
-            "status": 1, #msg_id判別エラー
+        #メッセージに応じた処理
+        _response_msg = {
+            "status": 1, #request_msg判別エラー
             "value": 0,
         }
-
-        if _devise_id == 1: #エアコン制御
-            if (_request_id >= 1) and (_request_id <= 5):
-                irrp_wrapper.request(_request_id)
-                _response_mesg["status"] = 0
+        _id   = _request_msg["devise_id"]
+        _code = _request_msg["request_code"]
+        _response_msg["status"] = irrp_wrapper.request(_id, _code)
 
         #処理結果の送信
-        _main_client.publish(topic["aws_from_raspi"], json.dumps(_response_mesg), 1)
-        print("Published topic %s: %s\n" % (topic["aws_from_raspi"], _response_mesg))
+        _main_client.publish(topic["aws_from_raspi"], json.dumps(_response_msg), 1)
+        print("Published topic %s: %s\n" % (topic["aws_from_raspi"], _response_msg))
 
 
 if __name__ == "__main__":
-	#AWSからのメッセージ受信スレッド開始
+    #AWSからのメッセージ受信スレッド開始
 
-	t1 = Thread(target=order_thread)
-	t1.start()
+    t1 = Thread(target=order_thread)
+    t1.start()
 
-	main_thread()
+    main_thread()

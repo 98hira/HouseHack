@@ -16,6 +16,16 @@ import boto3
 CHANNEL_ID = os.environ["CHANNELID"]
 CHANNEL_SECRET = os.environ["CHANNELSECRET"]
 
+#MQTT通信時のフォーマット関連の変数群
+REQUEST_TOPIC = "raspi/main/request"
+DEVISE_REQUEST_CODES = {
+  1:["ON","OFF","UP","DOWN","STATUS"],
+}
+request_form = {
+  "devise_id": None,
+  "request_code": None,
+}
+
 
 def line_request_check(event):
   _ret = 0
@@ -29,56 +39,39 @@ def line_request_check(event):
   return _ret
 
 
-_conver_dic = {
-  "text":{
-    "ON":     "0101", # エアコンON
-    "OFF":    "0102", # エアコンOFF
-    "UP":     "0103", # 温度アップ
-    "DOWN":   "0104", # 温度Down
-    "STATUS": "0104", # エアコンの状態を取得
-  }
-}
+
 def line_request_convert(event):
+  _ret = None
   body = json.loads(event["body"])
 
   #テキストが送られてきた場合
-  text = body["events"][0]["message"]["text"]
-
-  #text = text.uppper()
-  '''
-  ↑処理は以下のエラーが出たのでコメントアウト
-  ----
-  [ERROR] AttributeError: 'str' object has no attribute 'uppper'
-  Traceback (most recent call last):
-    File "/var/task/lambda_function.py", line 74, in lambda_handler
-      raspi_request = line_request_convert(event)
-    File "/var/task/lambda_function.py", line 47, in line_request_convert
-      text = text.uppper()
-  ----
-
-  試したこと
-    print(text)
-    print(type(text))
-  実行結果
-    ON
-    <class 'str'>
-  '''
-
-  _conver_dic["text"][text]
-  return _conver_dic["text"].get(text, None)
+  _code = body["events"][0]["message"].get("text")
+  _id = 1 #現状は１つしかないので固定値を代入
+  if _code is not None:
+    #text = text.uppper()
+    #上記処理はエラーが出たのでコメントアウト
+    if _code in DEVISE_REQUEST_CODES[_id]:
+      request_form["devise_id"] = _id
+      request_form["request_code"] = _code
+      _ret = request_form
+    else:
+      #メッセージ判別エラー
+      pass
+  else:
+    #メッセージ判別エラー
+    pass
+  return _ret
 
 
 def send_raspi_request(raspi_request):
   _ret = 0
 
-  topic = "raspi/main/order"
-  payload = raspi_request
   try:
     iot = boto3.client("iot-data")
     iot.publish(
-      topic = topic,
+      topic = REQUEST_TOPIC,
       qos = 0,
-      payload = payload
+      payload = json.dumps(raspi_request, ensure_ascii=False)
     )
   except Exception as e:
     print(e)
