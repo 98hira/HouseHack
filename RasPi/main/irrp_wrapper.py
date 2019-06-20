@@ -23,7 +23,7 @@ def request(devise_id, request_code):
   ret = 1
 
   _id = devise_id - 1
-  if _id <0 or _id >= len(devise_requests):
+  if _id < 0 or _id >= len(devise_requests):
     print("devise_id判別エラー")
     return 1
 
